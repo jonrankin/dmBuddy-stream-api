@@ -20,16 +20,25 @@ class StreamAPI(MethodView):
      """
 
      @staticmethod
-     def stream_get_authorized(claims, post_data):
+     def stream_get_authorized(claims, *args, **kwargs):
          """ Method for displaying all streams for the user """
-         return make_response(jsonify({
-                 'status': 'success',
-                 'data': {
-                 }
-               })), 200
+
+         stream_data =  Stream.query.filter_by(created_by=claims['sub'])
+         user_streams = {}
+         for _ in stream_data:
+             user_streams[_.stream_id] ={
+                               'stream_name': _.stream_name,
+                               'stream_desc' : _.stream_desc
+                             }
+         responseObject = {
+                              'status': 'success',
+                              'data': user_streams
+                          }
+
+         return make_response(jsonify(responseObject)), 200
 
      @staticmethod
-     def stream_post_authorized(request, claims):
+     def stream_post_authorized(claims, *args, **kwargs):
          """ Method for creating streams"""
          # get the post data
          post_data = request.get_json()
@@ -65,48 +74,57 @@ class StreamAPI(MethodView):
                               'message': e
                          }
                          return make_response(jsonify(responseObject)), 401
+         else:
+                  return make_response(jsonify({
+                         'status': 'fail',
+                         'message' : 'stream name already exists'
+                  })), 202
 
      def get(self):
-        # get the auth token
-        auth_header = request.headers.get('Authorization')
-        if auth_header:
-            auth_token = auth_header.split(" ")[1]
-        else:
-            auth_token = ''
-        if auth_token:
-            resp = User.decode_auth_token(auth_token)
-            if not isinstance(resp, str):
-                stream = Stream.query.filter(user_id=resp)
-                responseObject = {
-                    'status': 'success',
-                    'data': {
-                    }
-                }
-                return make_response(jsonify(responseObject)), 200
-            responseObject = {
-                'status': 'fail',
-                'message': resp
-            }
-            return make_response(jsonify(responseObject)), 401
-        else:
-            responseObject = {
-                'status': 'fail',
-                'message': 'Provide a valid auth token.'
-            }
-            return make_response(jsonify(responseObject)), 401
+        return make_response(protected_resource(request, self.stream_get_authorized, 'access'))
 
      def post(self):
-        # get the auth token
-        auth_header = request.headers.get('Authorization')
-        post_data = request.get_json()
         return make_response(protected_resource(request, self.stream_post_authorized, 'access'))
+
+class StreamDetailsAPI(MethodView):
+     """
+     stream details resource
+     """
+
+     @staticmethod
+     def stream_details_authorized(claims, *args, **kwargs):
+         stream_details = Stream.query.filter_by(stream_id=kwargs['user_id']).first()
+         if stream_details: 
+              return make_response(jsonify({
+                      'status': 'success',
+                      'data' : {
+                             'stream_id' : kwargs['user_id'],
+                             'stream_name' : stream_details.stream_name,
+                             'stream_desc' : stream_details.stream_desc
+                      }
+              })), 200
+         else:
+              return make_response(jsonify({
+                      'status': 'fail',
+                      'message' : 'stream does not exist'
+              })), 200
+
+     def get(self, user_id):
+        return make_response(protected_resource(request, self.stream_details_authorized, 'access', user_id= user_id))
+
 
 #define the API resources
 stream_view = StreamAPI.as_view('stream_api')
+stream_detail_view = StreamDetailsAPI.as_view('stream_details_api')
 
 #add rules for API endpoints
 stream_blueprint.add_url_rule(
     '/stream',
     view_func=stream_view,
     methods=['GET', 'POST']
+)
+stream_blueprint.add_url_rule(
+    '/stream/<int:user_id>',
+    view_func=stream_detail_view,
+    methods=['GET']
 )

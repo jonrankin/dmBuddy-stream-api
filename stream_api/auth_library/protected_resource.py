@@ -5,7 +5,7 @@ from .default_callbacks import default_unauthorized_callback,  default_needs_fre
 
 import requests
 
-def protected_resource(request, authorized_callback, token_needed = 'access', unauthorized_callback = default_unauthorized_callback):
+def protected_resource(request, authorized_callback, token_needed = 'access', unauthorized_callback = default_unauthorized_callback, *args, **kwargs):
         """
         Method used to protect a resource. This is used in a view to determine whether they are authorized or unauthorized. User passes an$
 
@@ -21,7 +21,7 @@ def protected_resource(request, authorized_callback, token_needed = 'access', un
                 resp = User.decode_token(auth_token, token_needed)
                 #when decoding the token, if the response is not a string, else we have an error and pass it to the default_expired_token_$
                 if not isinstance(resp, str):
-                        return authorized_callback(request, resp)
+                        return authorized_callback(resp, request, *args, **kwargs)
                 elif resp == 'Expired':
                         return default_needs_fresh_token_callback
                 return unauthorized_callback('Unauthorized')
