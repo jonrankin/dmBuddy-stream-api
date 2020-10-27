@@ -5,7 +5,7 @@ boto==2.40.0
 cffi==1.10.0
 chardet==2.3.0
 crcmod==1.7
-cryptography==1.5
+cryptography==3.2
 enum34==1.1.6
 httplib2==0.9.1
 idna==2.1
